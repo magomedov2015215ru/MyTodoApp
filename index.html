@@ -1,145 +1,197 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>S25 Ultra Plan</title>
-    <style>
-        :root {
-            --bg: #000000;
-            --card: #121212;
-            --accent: #007AFF;
-            --text: #FFFFFF;
-            --gray: #8E8E93;
-        }
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container { width: 100%; max-width: 400px; }
-        h1 { font-size: 28px; font-weight: 800; margin: 20px 0; letter-spacing: -0.5px; }
-        
-        .progress-card {
-            background: var(--card);
-            border-radius: 24px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #222;
-        }
-        .percent { font-size: 40px; font-weight: 900; color: var(--accent); }
-        .progress-bar {
-            height: 6px;
-            background: #222;
-            border-radius: 10px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-        #fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
+package com.example.todaytodo
 
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input {
-            flex: 1;
-            background: var(--card);
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 14px;
-            color: white;
-            font-size: 16px;
-        }
-        .add-btn {
-            background: var(--accent);
-            border: none;
-            border-radius: 12px;
-            width: 50px;
-            color: white;
-            font-size: 24px;
-        }
+import android.content.Context
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.util.UUID
 
-        .task-item {
-            background: var(--card);
-            padding: 16px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            border: 1px solid #1a1a1a;
-        }
-        .task-text { flex: 1; margin-left: 12px; font-size: 16px; }
-        .completed { color: var(--gray); text-decoration: line-through; }
-        
-        input[type="checkbox"] {
-            width: 22px;
-            height: 22px;
-            accent-color: var(--accent);
-        }
-    </style>
-</head>
-<body>
+// Категории дел
+enum class Category(val label: String, val color: Color) {
+    WORK("Работа", Color(0xFF64B5F6)),
+    HOME("Дом", Color(0xFF81C784)),
+    STUDY("Учеба", Color(0xFFFFD54F)),
+    SPORT("Спорт", Color(0xFFFF8A65))
+}
 
-<div class="container">
-    <h1>ПЛАНЫ</h1>
-    
-    <div class="progress-card">
-        <div id="percentText" class="percent">0%</div>
-        <div style="color: var(--gray); font-size: 14px;">прогресс на сегодня</div>
-        <div class="progress-bar"><div id="fill"></div></div>
-    </div>
+data class TodoTask(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String,
+    var isCompleted: Boolean = false,
+    val category: Category = Category.WORK
+)
 
-    <div class="input-group">
-        <input type="text" id="taskInput" placeholder="Новая задача...">
-        <button class="add-btn" onclick="addTask()">+</button>
-    </div>
-
-    <div id="taskList"></div>
-</div>
-
-<script>
-    let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
-
-    function render() {
-        localStorage.setItem('myTasks', JSON.stringify(tasks));
-        const list = document.getElementById('taskList');
-        list.innerHTML = '';
-        
-        let done = 0;
-        tasks.forEach((t, i) => {
-            if (t.completed) done++;
-            const item = document.createElement('div');
-            item.className = 'task-item';
-            item.innerHTML = `
-                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggle(${i})">
-                <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
-            `;
-            list.appendChild(item);
-        });
-
-        const res = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
-        document.getElementById('fill').style.width = res + '%';
-        document.getElementById('percentText').innerText = res + '%';
-    }
-
-    function addTask() {
-        const input = document.getElementById('taskInput');
-        if (input.value.trim()) {
-            tasks.unshift({ text: input.value, completed: false });
-            input.value = '';
-            render();
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme(colorScheme = darkColorScheme()) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF0A0A0A)) {
+                    TodoApp()
+                }
+            }
         }
     }
+}
 
-    function toggle(i) {
-        tasks[i].completed = !tasks[i].completed;
-        render();
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TodoApp() {
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("todo_prefs", Context.MODE_PRIVATE) }
+    val gson = Gson()
+
+    // Загрузка данных
+    var tasks by remember {
+        val json = sharedPreferences.getString("tasks", null)
+        val type = object : TypeToken<List<TodoTask>>() {}.type
+        mutableStateOf(if (json != null) gson.fromJson(json, type) else listOf<TodoTask>())
     }
 
-    render();
-</script>
+    // Сохранение при изменении списка
+    LaunchedEffect(tasks) {
+        sharedPreferences.edit().putString("tasks", gson.toJson(tasks)).apply()
+    }
 
-</body>
-</html>
+    var newTaskText by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf(Category.WORK) }
+
+    val progress = if (tasks.isNotEmpty()) tasks.count { it.isCompleted }.toFloat() / tasks.size else 0f
+    val animatedProgress by animateFloatAsState(targetValue = progress)
+
+    Scaffold(
+        topBar = {
+            LargeTopAppBar(
+                title = { Text("МОЙ ПЛАН", fontWeight = FontWeight.Black, letterSpacing = 2.sp) },
+                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            
+            // СТАТИСТИКА
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${(progress * 100).toInt()}%", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBB86FC))
+                        Spacer(Modifier.width(12.dp))
+                        Text("завершено сегодня", color = Color.Gray)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).background(Color.DarkGray, CircleShape),
+                        color = Color(0xFFBB86FC)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ВВОД ЗАДАЧИ
+            OutlinedTextField(
+                value = newTaskText,
+                onValueChange = { newTaskText = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Что нужно сделать?") },
+                shape = RoundedCornerShape(16.dp),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        if (newTaskText.isNotBlank()) {
+                            tasks = listOf(TodoTask(text = newTaskText, category = selectedCategory)) + tasks
+                            newTaskText = ""
+                        }
+                    }) { Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFFBB86FC)) }
+                }
+            )
+
+            // ВЫБОР КАТЕГОРИИ
+            Row(modifier = Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Category.values().forEach { cat ->
+                    FilterChip(
+                        selected = selectedCategory == cat,
+                        onClick = { selectedCategory = cat },
+                        label = { Text(cat.label) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = cat.color.copy(alpha = 0.3f))
+                    )
+                }
+            }
+
+            // СПИСОК С АНИМАЦИЕЙ
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(tasks, key = { it.id }) { task ->
+                    TaskItem(
+                        task = task,
+                        onToggle = { tasks = tasks.map { if (it.id == task.id) it.copy(isCompleted = !it.isCompleted) else it } },
+                        onDelete = { tasks = tasks.filter { it.id != task.id } }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TaskItem(task: TodoTask, onToggle: () -> Unit, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = task.isCompleted, onCheckedChange = { onToggle() })
+            
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                Text(
+                    text = task.text,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+                    ),
+                    color = if (task.isCompleted) Color.Gray else Color.White
+                )
+                Box(
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .background(task.category.color.copy(alpha = 0.2f), CircleShape)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(task.category.label, color = task.category.color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFCF6679), modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
