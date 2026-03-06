@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>S25 Ultra Plan</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --card: #121212;
+            --accent: #007AFF;
+            --text: #FFFFFF;
+            --gray: #8E8E93;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container { width: 100%; max-width: 400px; }
+        h1 { font-size: 28px; font-weight: 800; margin: 20px 0; letter-spacing: -0.5px; }
+        
+        .progress-card {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #222;
+        }
+        .percent { font-size: 40px; font-weight: 900; color: var(--accent); }
+        .progress-bar {
+            height: 6px;
+            background: #222;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        #fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 14px;
+            color: white;
+            font-size: 16px;
+        }
+        .add-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            width: 50px;
+            color: white;
+            font-size: 24px;
+        }
+
+        .task-item {
+            background: var(--card);
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            border: 1px solid #1a1a1a;
+        }
+        .task-text { flex: 1; margin-left: 12px; font-size: 16px; }
+        .completed { color: var(--gray); text-decoration: line-through; }
+        
+        input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>ПЛАНЫ</h1>
+    
+    <div class="progress-card">
+        <div id="percentText" class="percent">0%</div>
+        <div style="color: var(--gray); font-size: 14px;">прогресс на сегодня</div>
+        <div class="progress-bar"><div id="fill"></div></div>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="taskInput" placeholder="Новая задача...">
+        <button class="add-btn" onclick="addTask()">+</button>
+    </div>
+
+    <div id="taskList"></div>
+</div>
+
+<script>
+    let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
+
+    function render() {
+        localStorage.setItem('myTasks', JSON.stringify(tasks));
+        const list = document.getElementById('taskList');
+        list.innerHTML = '';
+        
+        let done = 0;
+        tasks.forEach((t, i) => {
+            if (t.completed) done++;
+            const item = document.createElement('div');
+            item.className = 'task-item';
+            item.innerHTML = `
+                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggle(${i})">
+                <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
+            `;
+            list.appendChild(item);
+        });
+
+        const res = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
+        document.getElementById('fill').style.width = res + '%';
+        document.getElementById('percentText').innerText = res + '%';
+    }
+
+    function addTask() {
+        const input = document.getElementById('taskInput');
+        if (input.value.trim()) {
+            tasks.unshift({ text: input.value, completed: false });
+            input.value = '';
+            render();
+        }
+    }
+
+    function toggle(i) {
+        tasks[i].completed = !tasks[i].completed;
+        render();
+    }
+
+    render();
+</script>
+
+</body>
+</html>
